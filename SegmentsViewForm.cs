@@ -76,6 +76,13 @@ namespace InterSeg
         /// <param name="inter">ссылка на список пересечений</param>
         private void WriteSegments(string fileName, ref List<Segment> seg, ref List<Segment> inter)
         {
+            var dTableSegment = new DataTable();
+            dTableSegment.Columns.Add("Id", typeof(int));
+            dTableSegment.Columns.Add("Отрезок", typeof(string));
+            var dTableIntersection = new DataTable();
+            dTableIntersection.Columns.Add("Id", typeof(int));
+            dTableIntersection.Columns.Add("Отрезок", typeof(string));
+
             using (StreamWriter sw = new StreamWriter(fileName))
             {
                 sw.WriteLine("Отрезки");
@@ -84,6 +91,9 @@ namespace InterSeg
                     string text = seg[i].First.X.ToString() + " " + seg[i].First.Y.ToString()
                                     + " " + seg[i].Second.X.ToString() + " " + seg[i].Second.Y.ToString();
                     sw.WriteLine(text);
+
+                    dTableSegment.Rows.Add(i + 1, seg[i].First.X.ToString() + " " + seg[i].First.Y.ToString() + " " +
+                    seg[i].Second.X.ToString() + " " + seg[i].Second.Y.ToString());
                 }
 
                 sw.WriteLine("Пересечения");
@@ -92,21 +102,29 @@ namespace InterSeg
                     string text = inter[i].First.X.ToString() + " " + inter[i].First.Y.ToString()
                                     + " " + inter[i].Second.X.ToString() + " " + inter[i].Second.Y.ToString();
                     sw.WriteLine(text);
+
+                    dTableIntersection.Rows.Add(i + 1, inter[i].First.X.ToString() + " " + inter[i].First.Y.ToString() + " " +
+                    inter[i].Second.X.ToString() + " " + inter[i].Second.Y.ToString());
                 }
                 sw.Flush();
                 needToRead = true;
             };
+
+            dataGridSegment.DataSource = dTableSegment;
+            dataGridSegment.Update();
+            dataGridIntersection.DataSource = dTableIntersection;
+            dataGridIntersection.Update();
         }
         private void segmentsBox_Paint(object sender, PaintEventArgs e)
         {
             Graphics g = e.Graphics;
-            Pen penBlue = new Pen(Color.Blue, 2);
-            penBlue.StartCap = LineCap.Flat;
-            penBlue.EndCap = LineCap.Flat;
+            Pen penSeg = new Pen(segmentColor.BackColor, 2);
+            penSeg.StartCap = LineCap.Flat;
+            penSeg.EndCap = LineCap.Flat;
 
-            Pen penRed = new Pen(Color.Red, 2);
-            penRed.StartCap = LineCap.Flat;
-            penRed.EndCap = LineCap.Flat;
+            Pen penInter = new Pen(intersectionColor.BackColor, 2);
+            penInter.StartCap = LineCap.Flat;
+            penInter.EndCap = LineCap.Flat;
 
             // список полученных пересечений
             List<Segment> NewSegments = new List<Segment>();
@@ -117,12 +135,12 @@ namespace InterSeg
 
             for (int i = 0; i < Segments.Count; i++)
             {
-                e.Graphics.DrawLine(penBlue, Segments[i].First.X, Segments[i].First.Y, Segments[i].Second.X, Segments[i].Second.Y);
+                e.Graphics.DrawLine(penSeg, Segments[i].First.X, Segments[i].First.Y, Segments[i].Second.X, Segments[i].Second.Y);
             }
 
             for (int i = 0; i < NewSegments.Count; i++)
             {
-                e.Graphics.DrawLine(penRed, NewSegments[i].First.X, NewSegments[i].First.Y, NewSegments[i].Second.X, NewSegments[i].Second.Y);
+                e.Graphics.DrawLine(penInter, NewSegments[i].First.X, NewSegments[i].First.Y, NewSegments[i].Second.X, NewSegments[i].Second.Y);
             }
         }
         private double AngleToOX(Segment seg)
@@ -194,6 +212,33 @@ namespace InterSeg
         /// <param name="e"></param>
         private void button1_Click(object sender, EventArgs e)
         {
+            if (textBoxSegmentCount.Text.Length == 0)
+            {
+                return;
+            }
+            // проверка является ли числом содержимое текстбокса
+            bool isNumber = true;
+            for (int i = 0; i < textBoxSegmentCount.Text.Length; i++)
+            {
+                bool isDigit = false;
+                for (int j = 0; j < 9; j++)
+                {
+                    if (textBoxSegmentCount.Text.Substring(i, 1) == j.ToString())
+                    {
+                        isDigit = true;
+                        break;
+                    }
+                }
+                if (!isDigit)
+                {
+                    isNumber = false;
+                    break;
+                }
+            }
+            if (!isNumber)
+            {
+                return;
+            }
             // список полученных пересечений
             List<Segment> NewSegments = new List<Segment>();
             // список сгенерированных отрезков
@@ -219,7 +264,9 @@ namespace InterSeg
                 }
                 Segments.Add(new Segment(p1, p2));
             }
+
             int crossCount = 0;
+            const int delta = 40;
             // определяем пересечения сгенерированных отрезков
             for (int i = 0; i < Segments.Count; i++)
             {
@@ -241,13 +288,13 @@ namespace InterSeg
                                 {
                                     Point tmpPoint = new Point();
                                     tmpPoint = cPoint;
-                                    tmpPoint.X -= (int)(2 * Math.Cos(anglei));
-                                    tmpPoint.Y -= (int)(2 * Math.Sin(anglei));
+                                    tmpPoint.X -= (int)(delta * Math.Cos(anglei));
+                                    tmpPoint.Y -= (int)(delta * Math.Sin(anglei));
                                     NewSegments.Add(new Segment(Segments[i].First, tmpPoint));
 
                                     tmpPoint = cPoint;
-                                    tmpPoint.X += (int)(2 * Math.Cos(anglei));
-                                    tmpPoint.Y += (int)(2 * Math.Sin(anglei));
+                                    tmpPoint.X += (int)(delta * Math.Cos(anglei));
+                                    tmpPoint.Y += (int)(delta * Math.Sin(anglei));
                                     NewSegments.Add(new Segment(tmpPoint, Segments[i].Second));
 
                                     SegmentsForDelete.Add(Segments[i]);
@@ -256,13 +303,13 @@ namespace InterSeg
                                 {
                                     Point tmpPoint = new Point();
                                     tmpPoint = cPoint;
-                                    tmpPoint.X -= (int)(2 * Math.Cos(anglej));
-                                    tmpPoint.Y -= (int)(2 * Math.Sin(anglej));
+                                    tmpPoint.X -= (int)(delta * Math.Cos(anglej));
+                                    tmpPoint.Y -= (int)(delta * Math.Sin(anglej));
                                     NewSegments.Add(new Segment(Segments[j].First, tmpPoint));
 
                                     tmpPoint = cPoint;
-                                    tmpPoint.X += (int)(2 * Math.Cos(anglej));
-                                    tmpPoint.Y += (int)(2 * Math.Sin(anglej));
+                                    tmpPoint.X += (int)(delta * Math.Cos(anglej));
+                                    tmpPoint.Y += (int)(delta * Math.Sin(anglej));
                                     NewSegments.Add(new Segment(tmpPoint, Segments[j].Second));
 
                                     SegmentsForDelete.Add(Segments[j]);
@@ -283,6 +330,26 @@ namespace InterSeg
 
             WriteSegments(@".\hta.txt", ref Segments, ref NewSegments);
             this.segmentsBox.Refresh();
+        }
+
+        private void intersection_Click(object sender, EventArgs e)
+        {
+            ColorDialog cd = new ColorDialog();
+            cd.AllowFullOpen = false;
+            cd.ShowHelp = true;
+            cd.Color = intersectionColor.BackColor;
+            if (cd.ShowDialog() == DialogResult.OK)
+                intersectionColor.BackColor = cd.Color;
+        }
+
+        private void segmentColor_Click(object sender, EventArgs e)
+        {
+            ColorDialog cd = new ColorDialog();
+            cd.AllowFullOpen = false;
+            cd.ShowHelp = true;
+            cd.Color = segmentColor.BackColor;
+            if (cd.ShowDialog() == DialogResult.OK)
+                segmentColor.BackColor = cd.Color;
         }
     }
 }
